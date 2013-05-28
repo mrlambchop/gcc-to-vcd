@@ -1,4 +1,3 @@
-gcc-to-vcd
-==========
+### To compile the profiling / test application:
 
-GCC instrumentation to VCD waveform hack
+# gcc prof.c test/test.c -finstrument-functions -O2 -g
