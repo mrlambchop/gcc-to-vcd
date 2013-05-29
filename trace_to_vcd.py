@@ -106,16 +106,17 @@ def load_func_names( file, logging ):
          tup_list.append(t)
 
    #parse the list of tuples in reverse order, building up a full address map to the symbols
-   prev_end = -1
+   #store the last address seen (as we as nm to output sorted) and use this to determine the range
+   prev_address = -1
    for x in reversed(tup_list):
       if x[1] == 'T' or x[1] == 't':
          name = x[2].rstrip('\r\n')
-         if name[0] != '.':
-            for addr in range( int(x[0], base=16), int( prev_end, base=16 ) ):
+         if name[0] != '.': #strip out internal gcc symbols
+            for addr in range( int(x[0], base=16), int( prev_address, base=16 ) ):
                a_ = "%08X" % addr
                func_names[a_] = name
                print "Adding func:", name, "at address", a_
-      prev_end = x[0]
+      prev_address = x[0]
 
 
 
