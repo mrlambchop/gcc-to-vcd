@@ -224,6 +224,9 @@ if __name__ == '__main__':
     
     #parse the trace file
     funcs, calls = parse_trace( options.tracefile )
+
+    if options.logging:
+       print "There are", len(funcs), "functions logged and", len(calls), "total function calls"
     
     #dump the wave form
     dump_waveform( options.output, funcs, calls )    

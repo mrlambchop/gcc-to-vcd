@@ -16,12 +16,15 @@ void FISH2( void )
 
 void FISH( void )
 {
+   printf("Starting to fish...");
    FISH2();
+   printf("Done!\n");
 }
 
 
 int main( void )
 {
+   printf("Main\n");
    FISH();
 
    return 0;

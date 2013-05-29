@@ -10,14 +10,13 @@
 
 static FILE *fp_trace = NULL; //trace file
 static void *stack = NULL;
-static int stack_index = 0;
+int stack_index = 0;
 unsigned long last_time = 0;
 
-#define STACK_ADD_UINT16( val )     ((uint16_t *)stack)[stack_index] = (uint16_t)(val); stack_index += sizeof(uint16_t); // This only works on certain CPUs as it causes the 32bit data to be written on 16bit boundaries
-#define STACK_ADD_UINT32( val )     ((uint32_t *)stack)[stack_index] = (uint32_t)(val); stack_index += sizeof(uint32_t);
+#define STACK_ADD_UINT32( val )     ((uint32_t *)stack)[stack_index / sizeof(uint32_t)] = (uint32_t)(val); stack_index += sizeof(uint32_t);
 #define STACK_FULL()                (stack_index & STACK_FULL_MARKER)
 
-#define FLUSH()                     fwrite( stack, stack_index, 1 * 4, fp_trace); stack_index = 0;
+#define FLUSH()                     fwrite( stack, stack_index, 1, fp_trace); stack_index = 0;
 
 
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
@@ -31,7 +30,9 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this
    STACK_ADD_UINT32( time(NULL) );
 
    if ( STACK_FULL() )
+   {
       FLUSH();
+   }
 }
 
 void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_fn, void *call_site)
@@ -45,7 +46,9 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
    STACK_ADD_UINT32( time(NULL) );
 
    if ( STACK_FULL() )
+   {
       FLUSH();
+   }
 }
 
 
@@ -53,7 +56,7 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
 void __attribute__((no_instrument_function)) __attribute__ ((constructor)) trace_begin (void)
 {
    fp_trace = fopen("./trace.out", "w");
-   stack = calloc( 1, sizeof( unsigned int ) * STACK_SIZE );
+   stack = calloc( 1, STACK_SIZE );
 }
 
 
