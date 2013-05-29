@@ -78,36 +78,43 @@ def get_options():
     return options
 
 
-IN = 1
-OUT = 2
-
 
 ###################################################
 ## Function to build up a dict of address vs function name
 ###################################################
 func_names = {}
 
-def load_func_names( file ):
+def load_func_names( file, logging ):
    tup_list = []
 
    cmd = "nm --demangle -n " + file    
+
+   if logging:
+      print "Running cmd: ", cmd
+
    stream = os.popen(cmd)
    while True:
       s = stream.readline()
       if len(s) == 0:
          break
       t = s.split(" ")
+
+      if logging == Logging.very_verbose:
+         print "Read tuple", t
+
       if len(t) == 3:
          tup_list.append(t)
 
    #parse the list of tuples in reverse order, building up a full address map to the symbols
    prev_end = -1
    for x in reversed(tup_list):
-      if x[1] == 'T': # t[1] == 't' or
+      if x[1] == 'T' or x[1] == 't':
          name = x[2].rstrip('\r\n')
-         for addr in range( int(x[0], base=16), int( prev_end, base=16 ) ):
-            a_ = "%08X" % addr
-            func_names[a_] = name
+         if name[0] != '.':
+            for addr in range( int(x[0], base=16), int( prev_end, base=16 ) ):
+               a_ = "%08X" % addr
+               func_names[a_] = name
+               print "Adding func:", name, "at address", a_
       prev_end = x[0]
 
 
@@ -128,12 +135,15 @@ def get_func_name( addr ):
 ##    - function names used (list of strs)
 ##    - list of function calls (list of tuples being DIRECTION, FUNC, CALLER, TIME)
 ###################################################
-def parse_trace( filename ):
+def parse_trace( filename, logging ):
    func_names_used = []
    calls = []
 
    f = open( filename, "rb" )
-   
+
+   IN = 1
+   OUT = 2
+
    while True:
       data = f.read( 4 )
       if len(data) != 0:
@@ -220,10 +230,10 @@ if __name__ == '__main__':
     #parse options
     options = get_options()
 
-    load_func_names( options.program )
+    load_func_names( options.program, options.logging )
     
     #parse the trace file
-    funcs, calls = parse_trace( options.tracefile )
+    funcs, calls = parse_trace( options.tracefile, options.logging )
 
     if options.logging:
        print "There are", len(funcs), "functions logged and", len(calls), "total function calls"
