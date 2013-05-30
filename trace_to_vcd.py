@@ -108,8 +108,8 @@ def load_func_names( file, logging ):
    if logging:
       print "Parsing output of nm"
 
-   #parse the list of tuples in reverse order, building up a full address map to the symbols store the last address seen (as we as nm to output sorted) and use this to determine the 
-   #range
+   #parse the list of tuples in reverse order, building up a full address map to the symbols store the last address seen (as we asked nm to output in addr sorted order) and use this 
+   #to determine the range of each function (i.e. start / end address)
    prev_address = -1
    for x in reversed(tup_list):
       if x[1] == 'T' or x[1] == 't':
@@ -144,7 +144,7 @@ def draw_progress_bar( percentage, cur_bar_pos ):
       sys.stdout.flush()
       sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
 
-   new_pos = percentage / 2
+   new_pos = percentage / 2 #div by 2 to match the toolbar_width
    if percentage > 0 and cur_bar_pos != new_pos:
        new_bar_chars = new_pos - cur_bar_pos
 
@@ -176,6 +176,7 @@ def parse_trace( filename, logging ):
 
    f = open( filename, "rb" )
 
+   #markers in the trace file
    IN = 1
    OUT = 2
 
