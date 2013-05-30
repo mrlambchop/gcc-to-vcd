@@ -22,45 +22,49 @@
 
 static FILE *fp_trace = NULL; //trace file
 static void *stack = NULL;
-int stack_index = 0;
-unsigned long last_time = 0;
+static uint32_t stack_index = 0;
+static uint32_t last_time = 0;
 
 #define STACK_ADD_UINT32( val )     ((uint32_t *)stack)[stack_index / sizeof(uint32_t)] = (uint32_t)(val); stack_index += sizeof(uint32_t);
 #define STACK_FULL()                (stack_index & STACK_FULL_MARKER)
 
-#define FLUSH()                     fwrite( stack, stack_index, 1, fp_trace); stack_index = 0;
+#define FLUSH()                     { fwrite( stack, stack_index, 1, fp_trace); stack_index = 0; }
+
+#define GET_TIME_DELTA()            { uint32_t time_now = time(NULL); /*output*/ time_delta = time_now - last_time; if (time_delta > 0xFFFFFF) time_delta = 0xFFFFFF; last_time = time_now; }
 
 
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
 {
+   uint32_t time_delta = 0;
+
    if( !stack || !fp_trace)
       return;
 
-   STACK_ADD_UINT32( IN );
+   GET_TIME_DELTA();
+
+   STACK_ADD_UINT32( (IN << 24) | time_delta );
    STACK_ADD_UINT32( this_fn );
-   STACK_ADD_UINT32( call_site );
-   STACK_ADD_UINT32( time(NULL) );
+   //STACK_ADD_UINT32( call_site ); //no need to store this unless we want a full dependancy tree
 
    if ( STACK_FULL() )
-   {
       FLUSH();
-   }
 }
 
 void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_fn, void *call_site)
 {
+   uint32_t time_delta = 0;
+
    if( !stack || !fp_trace)
       return;
 
-   STACK_ADD_UINT32( OUT );
+   GET_TIME_DELTA();
+
+   STACK_ADD_UINT32( (OUT << 24) | time_delta );
    STACK_ADD_UINT32( this_fn );
-   STACK_ADD_UINT32( call_site );
-   STACK_ADD_UINT32( time(NULL) );
+   //STACK_ADD_UINT32( call_site ); //no need to store this unless we want a full dependancy tree
 
    if ( STACK_FULL() )
-   {
       FLUSH();
-   }
 }
 
 
@@ -69,6 +73,7 @@ void __attribute__((no_instrument_function)) __attribute__ ((constructor)) trace
 {
    fp_trace = fopen("./trace.out", "w");
    stack = calloc( 1, STACK_SIZE );
+   last_time = time(NULL);
 }
 
 

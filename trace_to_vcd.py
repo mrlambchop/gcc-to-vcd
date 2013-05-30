@@ -105,8 +105,11 @@ def load_func_names( file, logging ):
       if len(t) == 3:
          tup_list.append(t)
 
-   #parse the list of tuples in reverse order, building up a full address map to the symbols
-   #store the last address seen (as we as nm to output sorted) and use this to determine the range
+   if logging:
+      print "Parsing output of nm"
+
+   #parse the list of tuples in reverse order, building up a full address map to the symbols store the last address seen (as we as nm to output sorted) and use this to determine the 
+   #range
    prev_address = -1
    for x in reversed(tup_list):
       if x[1] == 'T' or x[1] == 't':
@@ -115,9 +118,9 @@ def load_func_names( file, logging ):
             for addr in range( int(x[0], base=16), int( prev_address, base=16 ) ):
                a_ = "%08X" % addr
                func_names[a_] = name
-               print "Adding func:", name, "at address", a_
+               if logging == Logging.very_verbose:
+                  print "Adding func:", name, "at address", a_
       prev_address = x[0]
-
 
 
 ###################################################
@@ -131,6 +134,32 @@ def get_func_name( addr ):
       return "UNKNOWN_" + a_
 
 
+
+def draw_progress_bar( percentage, cur_bar_pos ):
+   toolbar_width = 50 #half of the percent to make things easy
+
+   if percentage == 0:
+      # setup toolbar
+      sys.stdout.write("[%s]" % (" " * toolbar_width))
+      sys.stdout.flush()
+      sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
+
+   new_pos = percentage / 2
+   if percentage > 0 and cur_bar_pos != new_pos:
+       new_bar_chars = new_pos - cur_bar_pos
+
+       # update the bar
+       for x in range(0, new_bar_chars):
+          sys.stdout.write("-")
+       sys.stdout.flush()
+       cur_bar_pos = new_pos
+
+   if percentage == 100:
+      sys.stdout.write("\n")
+
+   return cur_bar_pos
+
+
 ###################################################
 ## Parse Trace! Returns a tuple of:
 ##    - function names used (list of strs)
@@ -140,35 +169,59 @@ def parse_trace( filename, logging ):
    func_names_used = []
    calls = []
 
+   file_size = os.path.getsize(filename)
+   total_data_read = 0
+   progress_percentage = 0
+   cur_bar_pos = 0
+
    f = open( filename, "rb" )
 
    IN = 1
    OUT = 2
 
-   while True:
-      data = f.read( 4 )
-      if len(data) != 0:
-         t = struct.unpack("I", data )
-         op = t[0]
+   size_of_item = 8 #bytes
+   buffer_size_to_read = size_of_item * 16384
 
-         if op == IN or op == OUT:
-            data = f.read( 12 )
-            func, call, time = struct.unpack("III", data )
+   if logging:
+      print "Parsing trace file:", filename
+
+   cur_bar_pos = draw_progress_bar( 0, cur_bar_pos )
+
+   while True:
+      data = f.read( buffer_size_to_read )
+      total_data_read += len(data)
+
+      if len(data) != 0:
+         for x in range( 0, len(data), 8 ):
+            t = struct.unpack("II", data[x:x+8] )
+            op_time = t[0]
+            func = t[1]
+
+            op = (op_time >> 24) & 0xFF
+            time = op_time & 0xFFFFFF
+
+            if op == IN or op == OUT:
+               dir = "IN" if (op == IN) else "OUT"
+              
+               item = dir, get_func_name(func), time
+ 
+               func_names_used.append( get_func_name(func) )
             
-            dir = "IN" if (op == IN) else "OUT"
-            
-            item = dir, get_func_name(func), get_func_name(call), time
-            
-            func_names_used.append( get_func_name(func) )
-            func_names_used.append( get_func_name(call) )
-            
-            calls.append( item )
-         else:
-            print "Bad op", op
-            sys.exit(-1)
+               calls.append( item )
+            else:
+               print "Bad op", op
+               sys.exit(-1)
+
+            new_percentage = (total_data_read * 100) / file_size
+            if progress_percentage != new_percentage:
+               cur_bar_pos = draw_progress_bar( new_percentage, cur_bar_pos )
+               progress_percentage = new_percentage
+
       else:
          break
    f.close()
+
+   cur_bar_pos = draw_progress_bar( 100, cur_bar_pos )
    
    #remove the duplices from the function names
    func_names_used = list(set(func_names_used))
@@ -179,8 +232,11 @@ def parse_trace( filename, logging ):
 ###################################################
 ## Dump the VCD file
 ###################################################
-def dump_waveform( outfile, funcs, calls ):
+def dump_waveform( outfile, funcs, calls, logging ):
    f = open( outfile, "w" )
+
+   if logging:
+      print "Dumping VCD"
    
    #first, print all the functions
    f.write( "$date May 20 2013 12:00:05 $end\n" )
@@ -209,12 +265,20 @@ def dump_waveform( outfile, funcs, calls ):
    
    #dump out all the stack changes
    for t, c in enumerate(calls):
-      f.write( "#" + str(t + 1) + "\n" )
+      new_time = t + c[2]
+      if new_time == t:
+         new_time += 1
+      else:
+         print "actual ", new_time, t, c[2]
+
+      f.write( "#" + str(new_time) + "\n" )
       if c[0] == "IN":
          f.write( "1" + func_char_map[c[1]] + "\n" )
          
       if c[0] == "OUT":
          f.write( "0" + func_char_map[c[1]] + "\n" )
+
+      t = new_time
          
    #all to zero at the end please
    f.write( "#" + str(t + 2) + "\n" )
@@ -240,6 +304,6 @@ if __name__ == '__main__':
        print "There are", len(funcs), "functions logged and", len(calls), "total function calls"
     
     #dump the wave form
-    dump_waveform( options.output, funcs, calls )    
+    dump_waveform( options.output, funcs, calls, options.logging )    
 
     sys.exit(0)
