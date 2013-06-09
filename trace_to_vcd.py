@@ -89,15 +89,22 @@ VCD_LOW_ASCII = '!'
 VCD_HIGH_ASCII = '~'
 
 func_name_to_ascii_dict = {}
+ascii_id = 0
 
 #We get in an ASCII ID in the form 'xyz' where each character is the range 33-126
-def translate_ascii_id( name, i ):
+def translate_ascii_id( name ):
+   global ascii_id
+   global func_name_to_ascii_dict
 
-   #quick lookup for the key
+   #quick lookup for the key if the func has been seen already?
    if func_name_to_ascii_dict.has_key( name ):
       return func_name_to_ascii_dict[name]
   
+   #otherwise, allocate a new string using 
    range = ord(VCD_HIGH_ASCII) - ord(VCD_LOW_ASCII) + 1
+   
+   #working variable
+   i = ascii_id
 
    #always add iniial report
    s = chr( (i % range) + ord(VCD_LOW_ASCII) )
@@ -112,6 +119,8 @@ def translate_ascii_id( name, i ):
 
    #store the new key
    func_name_to_ascii_dict[name] = s
+   
+   ascii_id += 1
 
    return s
 
@@ -152,18 +161,17 @@ def load_func_names( file, logging ):
 
    #parse the list of tuples in reverse order, building up a full address map to the symbols store the last address seen (as we asked nm to output in addr sorted order) and use this 
    #to determine the range of each function (i.e. start / end address)
+   #its slow to build, but O(1) to access which is done way more often
    prev_address = -1
-   ascii_id = 0
    for x in reversed(tup_list):
       if x[1] == 'T' or x[1] == 't':
          name = x[2].rstrip('\r\n')
          if name[0] != '.': #strip out internal gcc symbols
             for addr in range( int(x[0], base=16), int( prev_address, base=16 ) ):
                a_ = "%08X" % addr
-               func_names[a_] = Func( name, translate_ascii_id( name, ascii_id ) )
+               func_names[a_] = Func( name, translate_ascii_id( name  ) )
                if logging == Logging.very_verbose:
-                  print "Adding func:", name, "at address", a_, "with ASCII ID:", translate_ascii_id( name, ascii_id )
-               ascii_id += 1
+                  print "Adding func:", name, "at address", a_, "with ASCII ID:", translate_ascii_id( name )               
       prev_address = x[0]
 
 
