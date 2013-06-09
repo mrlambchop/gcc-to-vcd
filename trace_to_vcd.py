@@ -85,8 +85,8 @@ def get_options():
 
 
 
-VCD_LOW_ASCII = 'a' #'!'
-VCD_HIGH_ASCII = 'f' #'~'
+VCD_LOW_ASCII = '!'
+VCD_HIGH_ASCII = '~'
 
 func_name_to_ascii_dict = {}
 
