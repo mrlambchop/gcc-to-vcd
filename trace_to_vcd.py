@@ -88,14 +88,14 @@ def get_options():
 VCD_LOW_ASCII = 'a' #'!'
 VCD_HIGH_ASCII = 'f' #'~'
 
-tmp_ascii_dict = {}
+func_name_to_ascii_dict = {}
 
 #We get in an ASCII ID in the form 'xyz' where each character is the range 33-126
 def translate_ascii_id( name, i ):
 
    #quick lookup for the key
-   if tmp_ascii_dict.has_key( name ):
-      return tmp_ascii_dict[name]
+   if func_name_to_ascii_dict.has_key( name ):
+      return func_name_to_ascii_dict[name]
   
    range = ord(VCD_HIGH_ASCII) - ord(VCD_LOW_ASCII) + 1
 
@@ -111,7 +111,7 @@ def translate_ascii_id( name, i ):
       i /= (range ** 1)      
 
    #store the new key
-   tmp_ascii_dict[name] = s
+   func_name_to_ascii_dict[name] = s
 
    return s
 
@@ -185,8 +185,8 @@ def get_ascii_id_from_addr( addr ):
       return "!FAIL!" + a_
       
 def get_ascii_id_from_name( name ):
-   if tmp_ascii_dict.has_key(name):
-       return tmp_ascii_dict[name]
+   if func_name_to_ascii_dict.has_key(name):
+       return func_name_to_ascii_dict[name]
    else:
       return "!FAIL!" + name  
 
