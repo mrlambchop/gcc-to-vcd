@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <sys/time.h>
+#include <unistd.h>
 
 void FISH3( int i )
 {
    if (i)
+   {
       FISH3(i - 1);
+      usleep( i * 1000 );
+   }
 }
 
 
@@ -25,6 +29,7 @@ void FISH( void )
 int main( void )
 {
    printf("Main\n");
+
    FISH();
 
    return 0;

@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <sys/time.h>
 
 #define IN 1// 'I'
 #define OUT 2 // 'O'
@@ -30,7 +30,7 @@ static uint32_t last_time = 0;
 
 #define FLUSH()                     { fwrite( stack, stack_index, 1, fp_trace); stack_index = 0; }
 
-#define GET_TIME_DELTA()            { uint32_t time_now = time(NULL); /*output*/ time_delta = time_now - last_time; if (time_delta > 0xFFFFFF) time_delta = 0xFFFFFF; last_time = time_now; }
+#define GET_TIME_DELTA()            { struct timespec ts; clock_gettime( CLOCK_REALTIME, &ts ); /*output*/ time_delta = ts.tv_nsec - last_time; last_time = ts.tv_nsec; }
 
 
 void __attribute__((no_instrument_function)) __cyg_profile_func_enter(void *this_fn, void *call_site)
@@ -71,9 +71,12 @@ void __attribute__((no_instrument_function)) __cyg_profile_func_exit(void *this_
 
 void __attribute__((no_instrument_function)) __attribute__ ((constructor)) trace_begin (void)
 {
+   struct timespec ts;
    fp_trace = fopen("./trace.out", "w");
    stack = calloc( 1, STACK_SIZE );
-   last_time = time(NULL);
+
+   clock_gettime( CLOCK_REALTIME, &ts );
+   last_time = ts.tv_nsec;
 }
 
 
